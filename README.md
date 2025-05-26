@@ -1,68 +1,68 @@
-# Phishing Detection Tool
+# Ferramenta de Detecção de Phishing
 
-A comprehensive web application for detecting phishing attempts through URL analysis, machine learning, and various security checks.
+Uma aplicação web abrangente para detectar tentativas de phishing através de análise de URL, aprendizado de máquina e várias verificações de segurança.
 
-## Features
+## Funcionalidades
 
-### URL Analysis
-- PhishTank integration for known phishing URLs
-- WHOIS domain age verification
-- SSL certificate validation
-- Dynamic DNS detection
-- Brand similarity detection
-- Suspicious redirect analysis
-- Content analysis for login forms and sensitive data
+### Análise de URL
+- Integração com PhishTank para URLs de phishing conhecidas
+- Verificação de idade do domínio via WHOIS
+- Validação de certificado SSL
+- Detecção de DNS dinâmico
+- Detecção de similaridade com marcas
+- Análise de redirecionamentos suspeitos
+- Análise de conteúdo para formulários de login e dados sensíveis
 
-### Machine Learning
-- BERT-based phishing detection model
-- Confidence scoring
-- Multiple feature analysis (URL length, subdomains, special characters, etc.)
+### Aprendizado de Máquina
+- Modelo de detecção de phishing baseado em BERT
+- Pontuação de confiança
+- Análise de múltiplas características (comprimento da URL, subdomínios, caracteres especiais, etc.)
 - ref: https://huggingface.co/ealvaradob/bert-finetuned-phishing/tree/main
 
-### User Interface
-- Interactive dashboard with detailed analysis
-- Visual indicators for safe/malicious URLs
-- Analysis history with export functionality
-- Charts and statistics visualization
+### Interface do Usuário
+- Painel interativo com análise detalhada
+- Indicadores visuais para URLs seguras/maliciosas
+- Histórico de análises com funcionalidade de exportação
+- Visualização de gráficos e estatísticas
 
-## Setup
+## Configuração
 
 ### Backend (Python/FastAPI)
-1. Navigate to the backend directory:
+1. Navegue até o diretório do backend:
    ```bash
    cd backend-python
    ```
-2. Create and activate virtual environment:
+2. Crie e ative o ambiente virtual:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate  # No Windows: venv\Scripts\activate
    ```
-3. Install dependencies:
+3. Instale as dependências:
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the server:
+4. Inicie o servidor:
    ```bash
    uvicorn app.main:app --reload --port 3001
    ```
-   ### Port 3001 is mandatory!
+   ### A porta 3001 é obrigatória!
 
 ### Frontend (React/TypeScript)
-1. Navigate to the frontend directory:
+1. Navegue até o diretório do frontend:
    ```bash
    cd frontend
    ```
-2. Install dependencies:
+2. Instale as dependências:
    ```bash
    npm install
    ```
-3. Start the development server:
+3. Inicie o servidor de desenvolvimento:
    ```bash
    npm run dev
    ```
 
-## Technologies
+## Tecnologias
 - Backend: Python, FastAPI
 - Frontend: React, TypeScript, Tailwind CSS, Vite
 - ML: BERT, Transformers
-- Visualization: Recharts
+- Visualização: Recharts
