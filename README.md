@@ -17,6 +17,7 @@ A comprehensive web application for detecting phishing attempts through URL anal
 - BERT-based phishing detection model
 - Confidence scoring
 - Multiple feature analysis (URL length, subdomains, special characters, etc.)
+- ref: https://huggingface.co/ealvaradob/bert-finetuned-phishing/tree/main
 
 ### User Interface
 - Interactive dashboard with detailed analysis
@@ -42,8 +43,9 @@ A comprehensive web application for detecting phishing attempts through URL anal
    ```
 4. Start the server:
    ```bash
-   uvicorn app.main:app --reload
+   uvicorn app.main:app --reload --port 3001
    ```
+   ### Port 3001 is mandatory!
 
 ### Frontend (React/TypeScript)
 1. Navigate to the frontend directory:
@@ -59,20 +61,8 @@ A comprehensive web application for detecting phishing attempts through URL anal
    npm run dev
    ```
 
-## Testing
-- Backend tests are located in `backend-python/tests/`
-- Run tests using pytest:
-  ```bash
-  cd backend-python
-  pytest
-  ```
-
-## API Keys
-The application requires the following API keys:
-- PhishTank API key (optional)
-
 ## Technologies
 - Backend: Python, FastAPI
-- Frontend: React, TypeScript, Tailwind CSS
+- Frontend: React, TypeScript, Tailwind CSS, Vite
 - ML: BERT, Transformers
 - Visualization: Recharts
