@@ -117,21 +117,23 @@ export const UrlChecker: React.FC = () => {
       e.url,
       e.isPhishing ? 'Suspicious' : 'Safe',
       e.reasons.join('; '),
-      e.phishtank?.in_database?.toString() ?? 'false',
-      e.phishtank?.verified_at ?? '',
-      e.whois.age_days != null ? e.whois.age_days.toString() : '',
-      e.whois.is_suspicious.toString(),
-      e.whois.creation_date ?? '',
-      e.whois.registrar ?? '',
-      e.whois.organization ?? '',
-      e.whois.country ?? '',
-      e.ssl.is_valid.toString(),
-      e.ssl.domain_match.toString(),
-      e.ssl.is_expired.toString(),
-      e.ssl.is_not_valid_yet.toString(),
+      (e.phishtank?.in_database ?? false).toString(),
+      e.phishtank?.verified_at   || '',
+      e.whois.age_days != null   ? e.whois.age_days.toString() : '',
+      (e.whois.is_suspicious ?? false).toString(),
+      e.whois.creation_date      || '',
+      e.whois.registrar          || '',
+      e.whois.organization       || '',
+      e.whois.country            || '',
+      (e.ssl?.is_valid           ?? false).toString(),
+      (e.ssl?.domain_match       ?? false).toString(),    // ← guard here
+      (e.ssl?.is_expired         ?? false).toString(),
+      (e.ssl?.is_not_valid_yet   ?? false).toString(),
       e.redirects.redirect_chain.join(' > '),
       e.redirects.reasons.join('; '),
-      e.dynamic_dns.is_dynamic_dns ? e.dynamic_dns.domain : 'false',
+      e.dynamic_dns.is_dynamic_dns
+        ? e.dynamic_dns.domain
+        : 'false',
       e.brand_similarity.reasons.join('; '),
       e.content_analysis.reasons.join('; ')
     ]);
@@ -212,10 +214,36 @@ export const UrlChecker: React.FC = () => {
           </button>
         </div>
         {/* Consultations Card */}
-        <div className="bg-[#20243a] border border-[#232c43] rounded-xl p-4 w-full max-h-[400px] flex flex-col mb-8 overflow-y-auto">
-          <div className="font-bold text-blue-200 text-lg mb-4">Consultation History</div>
-          <div className="flex h-[400px] overflow-y-auto min-h-0">
-            
+        <div
+          style={{
+            backgroundColor: '#20243a',
+            border: '1px solid #232c43',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            width: '100%',
+            marginBottom: '2rem',
+            height: '400px',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* header stays pinned */}
+          <div style={{
+            fontWeight: 'bold',
+            color: '#bfdbfe', // text-blue-200
+            fontSize: '1.125rem',
+            marginBottom: '1rem',
+            flex: 'none'
+          }}>
+            Consultation History
+          </div>
+
+          {/* table wrapper scrolls internally */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            minHeight: 0
+          }}>
             <table className="w-full table-fixed border-collapse bg-[#20243a] rounded-xl">
               <thead>
                 <tr className="bg-[#232c43]">
@@ -226,18 +254,22 @@ export const UrlChecker: React.FC = () => {
               </thead>
               <tbody>
                 {history.map((entry, idx) => (
-                  <tr key={idx} className={idx % 2 === 0 ? 'bg-[#20243a]' : 'bg-[#232c43]'}>
-                    <td className="border-b border-[#232c43] px-5 py-3 align-top text-gray-100 text-base">{entry.url}</td>
+                  <tr
+                    key={idx}
+                    className={idx % 2 === 0 ? 'bg-[#232c43]' : 'bg-[#20243a]'}
+                  >
+                    <td className="border-b border-[#232c43] px-5 py-3 align-top text-gray-100">
+                      {entry.url}
+                    </td>
                     <td className="border-b border-[#232c43] px-5 py-3 align-top">
-                      {entry.isPhishing ? (
-                        <span className="text-red-400 font-semibold">Suspicious</span>
-                      ) : (
-                        <span className="text-blue-400 font-semibold">Safe</span>
-                      )}
+                      {entry.isPhishing
+                        ? <span className="text-red-400 font-semibold">Suspicious</span>
+                        : <span className="text-blue-400 font-semibold">Safe</span>
+                      }
                     </td>
                     <td className="border-b border-[#232c43] px-5 py-3 align-top">
                       <button
-                        className="cursor-pointer font-medium text-blue-300 py-2 outline-none underline"
+                        className="text-blue-300 underline font-medium"
                         onClick={() => setModalEntry(entry)}
                       >
                         View full analysis
