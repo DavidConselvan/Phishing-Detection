@@ -6,6 +6,7 @@ export interface DynamicDNSResult { is_dynamic_dns: boolean; domain: string; }
 export interface BrandSimilarityResult { is_suspicious: boolean; reasons: string[]; similar_brands: { label: string; distance: number }[]; target_domain: string; }
 export interface ContentAnalysisResult { is_suspicious: boolean; reasons: string[]; suspicious_text: string[]; suspicious_forms: string[]; }
 export interface PhishTankResult { in_database: boolean; valid?: boolean; phish_id?: number; phish_detail_page?: string; verified?: boolean; verified_at?: string; }
+
 export interface PhishingCheckResult {
   url: string;
   isPhishing: boolean;
@@ -17,4 +18,10 @@ export interface PhishingCheckResult {
   dynamic_dns: DynamicDNSResult;
   brand_similarity: BrandSimilarityResult;
   content_analysis: ContentAnalysisResult;
+  ml_model: {
+    label: string;
+    score: number;
+    is_suspicious: boolean;
+    error?: string;
+  };
 }

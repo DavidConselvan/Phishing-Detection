@@ -8,6 +8,7 @@ from app.services.brand_service import BrandService
 from app.services.content_service import ContentService
 from urllib.parse import urlparse
 from app.services.dynamic_dns_service import DynamicDnsService
+from app.services.ml_model_service import MLModelService
 
 router = APIRouter()
 phishtank_service = PhishTankService()
@@ -17,7 +18,7 @@ redirect_service = RedirectService()
 brand_service = BrandService()
 content_service = ContentService()
 dynamic_dns_service = DynamicDnsService()
-
+ml_model_service = MLModelService()
 @router.get("/test")
 async def test():
     return {"message": "API is working!"}
@@ -34,6 +35,24 @@ async def check_phishing(request: URLRequest):
     brand_result = brand_service.check_similarity(url)
     content_result = content_service.analyze_content(url)
     ddns_result = dynamic_dns_service.check_domain(domain)
+    ml_result = ml_model_service.classify_url(url)
+
+    if not ml_result or ml_result.get("label") == "error":
+        ml_result = {
+            "label": "error",
+            "score": 0,
+            "is_suspicious": False,
+            "error": "ML model unavailable"
+        }
+
+    print("PhishTank:", phishtank_result.get("isPhishing"))
+    print("WHOIS:", whois_result.get("is_suspicious"))
+    print("SSL:", ssl_result.get("is_suspicious"))
+    print("Redirects:", redirect_result.get("is_suspicious"))
+    print("Brand:", brand_result.get("is_suspicious"))
+    print("Content:", content_result.get("is_suspicious"))
+    print("DDNS:", ddns_result.get("is_dynamic_dns"))
+    print("ML:", ml_result)
 
     isPhishing = (
         phishtank_result.get("isPhishing", False) or 
@@ -42,8 +61,11 @@ async def check_phishing(request: URLRequest):
         redirect_result.get("is_suspicious", False) or
         brand_result.get("is_suspicious", False) or
         content_result.get("is_suspicious", False) or
-        ddns_result.get("is_dynamic_dns", False)
+        ddns_result.get("is_dynamic_dns", False) or
+        ml_result.get("is_suspicious", False)
     )
+
+
     reasons = []
 
     if phishtank_result.get("isPhishing"):
@@ -72,6 +94,9 @@ async def check_phishing(request: URLRequest):
     if ddns_result["is_dynamic_dns"]:
          reasons.append(f"Domain uses Dynamic-DNS provider ({ddns_result['domain']})")
 
+    if ml_result.get("is_suspicious"):
+        reasons.append(f"ML model flagged this as phishing (score: {ml_result.get('score')})")
+
     result = PhishingCheckResult(
          url=url,
          isPhishing=isPhishing,
@@ -82,7 +107,8 @@ async def check_phishing(request: URLRequest):
          redirects=redirect_result,
          dynamic_dns=ddns_result,  
          brand_similarity=brand_result,
-         content_analysis=content_result
+         content_analysis=content_result,
+         ml_model=ml_result
      )
     # print("Result: ", result)
     return result

@@ -46,6 +46,13 @@ class ContentAnalysisResult(BaseModel):
     suspicious_text: List[str]
     suspicious_forms: List[str]
 
+class MLModelResult(BaseModel):
+    label: str
+    score: float
+    is_suspicious: bool
+    error: Optional[str] = None
+
+
 class PhishingCheckResult(BaseModel):
     url: str
     isPhishing: bool
@@ -57,3 +64,4 @@ class PhishingCheckResult(BaseModel):
     dynamic_dns: Optional[DynamicDNSResult] = None
     brand_similarity: dict
     content_analysis: dict
+    ml_model: Optional[MLModelResult] = None

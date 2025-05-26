@@ -59,6 +59,7 @@ export const UrlChecker: React.FC = () => {
         body: JSON.stringify({ url: inputUrl }),
       });
       const result: PhishingCheckResult = await resp.json();
+      // console.log("Result: ", result);
       setHistory(prev => [result, ...prev]);
       setInputUrl('');
     } catch (e: any) {
@@ -296,6 +297,23 @@ export const UrlChecker: React.FC = () => {
                         <p>No suspicious forms or fields detected</p>
                       )}
                     </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">ML Model</h4>
+                    {entry.ml_model ? (
+                      entry.ml_model.error ? (
+                        <p className="text-red-600">Model error: {entry.ml_model.error}</p>
+                      ) : (
+                        <p>
+                          Label: {entry.ml_model.label} | Score: {entry.ml_model.score}%
+                          {entry.ml_model.is_suspicious && (
+                            <span className="text-red-500 ml-2 font-semibold">(Phishing)</span>
+                          )}
+                        </p>
+                      )
+                    ) : (
+                      <p>ML analysis not available</p>
+                    )}
                   </div>
                 </details>
               </td>
