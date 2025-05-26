@@ -61,6 +61,7 @@ export const UrlChecker: React.FC = () => {
   const [inputUrl, setInputUrl] = useState<string>('');
   const [history, setHistory] = useState<PhishingCheckResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [inPhishTank, setInPhishTank] = useState<boolean>(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('urlCheckHistory');
@@ -85,6 +86,8 @@ export const UrlChecker: React.FC = () => {
         body: JSON.stringify({ url: inputUrl })
       });
       const result: PhishingCheckResult = await resp.json();
+      setInPhishTank(result.phishtank.valid && result.phishtank.in_database);
+      // console.log("result: ", result)
       setHistory(prev => [{ ...result }, ...prev]);
       setInputUrl('');
     } catch (e: any) {
@@ -124,10 +127,10 @@ export const UrlChecker: React.FC = () => {
         </thead>
         <tbody>
           {history.map((entry, idx) => (
-            <tr key={idx} className={entry.isPhishing ? 'bg-red-50' : 'bg-green-50'}>
+            <tr key={idx} className={inPhishTank ? 'bg-red-50' : 'bg-green-50'}>
               <td className="border px-2 py-1 align-top">{entry.url}</td>
               <td className="border px-2 py-1 align-top">
-                {entry.isPhishing ? (
+                {inPhishTank ? (
                   <span className="text-red-600 font-semibold">Suspicious</span>
                 ) : (
                   <span className="text-green-600 font-semibold">Safe</span>
@@ -139,7 +142,7 @@ export const UrlChecker: React.FC = () => {
                   <div className="mt-2 space-y-2">
                     <div>
                       <h4 className="font-semibold">PhishTank</h4>
-                      <p>{entry.phishtank?.isPhishing ? 'URL found in PhishTank' : 'Not listed in PhishTank'}</p>
+                      <p>{inPhishTank ? 'URL found in PhishTank' : 'Not listed in PhishTank'}</p>
                     </div>
 
                     <div>

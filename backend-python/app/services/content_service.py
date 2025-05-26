@@ -134,12 +134,12 @@ class ContentService:
                 "suspicious_forms": form_reasons,
                 "suspicious_text": []
             }
-            print("content data", data)
-            print("--------------------------------")
+            # print("content data", data)
+            # print("--------------------------------")
             return data
 
         except Exception as e:
-            print(f"Error analyzing content: {str(e)}")
+            # print(f"Error analyzing content: {str(e)}")
             return {
                 "is_suspicious": True,
                 "reasons": [f"Error analyzing content: {str(e)}"],

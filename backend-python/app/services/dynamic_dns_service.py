@@ -30,5 +30,5 @@ class DynamicDnsService:
 
     def check_domain(self, domain: str) -> Dict[str, Any]:
         is_dd = self.is_dynamic_dns(domain)
-        print("is_dd: ", is_dd)
+        # print("is_dd: ", is_dd)
         return {"is_dynamic_dns": is_dd, "domain": domain}

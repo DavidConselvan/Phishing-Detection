@@ -42,13 +42,13 @@ class SSLService:
                         "domain_match": domain_match,
                         "is_suspicious": is_expired or is_not_valid_yet or not domain_match
                     }
-                    print(f"SSL data for {domain}:", data)
-                    print("--------------------------------")
+                    # print(f"SSL data for {domain}:", data)
+                    # print("--------------------------------")
                     return data
                     
 
         except Exception as e:
-            print(f"Error checking SSL: {str(e)}")
+            # print(f"Error checking SSL: {str(e)}")
             return {
                 "is_valid": False,
                 "error": f"Error checking SSL: {str(e)}",

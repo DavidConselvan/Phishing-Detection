@@ -30,12 +30,12 @@ class WhoisService:
                 "organization": w.org,
                 "country": w.country
             }
-            print(f"WHOIS data for {domain}:", data)
-            print("--------------------------------")
+            # print(f"WHOIS data for {domain}:", data)
+            # print("--------------------------------")
             return data
             
         except Exception as e:
-            print(f"Error checking WHOIS: {str(e)}")
+            # print(f"Error checking WHOIS: {str(e)}")
             return {
                 "age_days": None,
                 "creation_date": None,

@@ -95,6 +95,6 @@ class BrandService:
             "similar_brands": similar_brands,
             "target_domain": target
         }
-        print("brand data: ", result)
-        print("--------------------------------")
+        # print("brand data: ", result)
+        # print("--------------------------------")
         return result

@@ -33,10 +33,12 @@ class PhishTankService:
             
             data = response.json()
             isPhishing = data["results"]["in_database"] and data["results"]["valid"]
+            print("phishtank isPhishing: ", isPhishing)
             return {
                 "isPhishing": isPhishing,
                 "phishtank": data["results"]
             }
+
         except Exception as e:
             return {
                 "isPhishing": False,

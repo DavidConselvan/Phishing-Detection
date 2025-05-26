@@ -117,12 +117,12 @@ class RedirectService:
                 "domains_visited": list(domains),
                 "final_url": final
             }
-            print("redirects data", data)
-            print("--------------------------------")
+            # print("redirects data", data)
+            # print("--------------------------------")
             return data
 
         except Exception as e:
-            print(f"Error checking redirects: {str(e)}")
+            # print(f"Error checking redirects: {str(e)}")
             return {
                 "is_suspicious": True,
                 "reasons": [f"Error checking redirects: {str(e)}"],
