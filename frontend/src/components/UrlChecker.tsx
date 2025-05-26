@@ -44,11 +44,19 @@ export interface ContentAnalysisResult {
   suspicious_text: string[];
   suspicious_forms: string[];
 }
+export interface PhishTankResult {
+  in_database: boolean;
+  valid?: boolean;
+  phish_id?: number;
+  phish_detail_page?: string;
+  verified?: boolean;
+  verified_at?: string;
+}
 export interface PhishingCheckResult {
   url: string;
   isPhishing: boolean;
   reasons: string[];
-  phishtank?: any;
+  phishtank?: PhishTankResult;
   whois: WhoisResult;
   ssl: SSLResult;
   redirects: RedirectResult;
@@ -61,13 +69,36 @@ export const UrlChecker: React.FC = () => {
   const [inputUrl, setInputUrl] = useState<string>('');
   const [history, setHistory] = useState<PhishingCheckResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [inPhishTank, setInPhishTank] = useState<boolean>(false);
 
+  // Explanation map for each risk reason
+  const EXPLANATIONS: Record<string, string> = {
+    'URL found in PhishTank database':
+      'This URL has been reported and verified by the community as a phishing page.',
+    'Domain is less than 30 days old':
+      'Newly registered domains are often used in short-lived phishing campaigns before they can be blacklisted.',
+    'Certificate domain mismatch':
+      "An SSL certificate must match the site's hostname; a mismatch breaks trust and could allow interception.",
+    'Certificate expired':
+      'Expired certificates no longer guarantee encryption or authenticity—attackers can exploit this lapse to intercept or modify traffic.',
+    'Certificate not yet valid':
+      'Certificates are only valid after their start date—premature use can indicate misissuance or tampering.',
+    'Domain uses Dynamic-DNS provider':
+      'Dynamic-DNS services allow IPs to change rapidly, often used by attackers to evade takedowns.',
+    'Form contains password field':
+      'Login forms on untrusted domains can harvest your credentials.',
+    'Form requests sensitive information':
+      'Requesting personal data (credit card, CPF/CNPJ, etc.) outside an official site is a common identity-theft tactic.',
+    'Label similar to':
+      'Domains that closely resemble known brands are used by attackers to trick users into giving up credentials.',
+    'Uses suspicious domain':
+      'Unexpected redirects to unknown or malicious hosts indicate attempts to evade detection.',
+  };
+
+  // Load/persist history
   useEffect(() => {
     const stored = localStorage.getItem('urlCheckHistory');
     if (stored) setHistory(JSON.parse(stored));
   }, []);
-
   useEffect(() => {
     localStorage.setItem('urlCheckHistory', JSON.stringify(history));
   }, [history]);
@@ -78,22 +109,43 @@ export const UrlChecker: React.FC = () => {
       setError('Please enter a valid URL (including http:// or https://)');
       return;
     }
-
     try {
       const resp = await fetch('http://localhost:3001/api/check-phishing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: inputUrl })
+        body: JSON.stringify({ url: inputUrl }),
       });
       const result: PhishingCheckResult = await resp.json();
-      setInPhishTank(result.phishtank.valid && result.phishtank.in_database);
-      // console.log("result: ", result)
       setHistory(prev => [{ ...result }, ...prev]);
       setInputUrl('');
     } catch (e: any) {
       setError(`Error checking URL: ${e.message}`);
     }
   };
+
+  const renderReasons = (reasons: string[]) => (
+    <ul className="list-disc ml-4">
+      {reasons.map((reason, i) => {
+        let explanation = EXPLANATIONS[reason];
+        if (!explanation) {
+          for (const key in EXPLANATIONS) {
+            if (reason.startsWith(key)) {
+              explanation = EXPLANATIONS[key];
+              break;
+            }
+          }
+        }
+        return (
+          <li key={i} className="mb-2">
+            {reason}
+            {explanation && (
+              <p className="text-sm text-gray-600 ml-4">{explanation}</p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <div className="container mx-auto p-4">
@@ -107,10 +159,7 @@ export const UrlChecker: React.FC = () => {
           value={inputUrl}
           onChange={e => setInputUrl(e.target.value)}
         />
-        <button
-          className="bg-blue-500 text-white px-4 rounded"
-          onClick={checkUrl}
-        >
+        <button className="bg-blue-500 text-white px-4 rounded" onClick={checkUrl}>
           Check URL
         </button>
       </div>
@@ -127,10 +176,10 @@ export const UrlChecker: React.FC = () => {
         </thead>
         <tbody>
           {history.map((entry, idx) => (
-            <tr key={idx} className={inPhishTank ? 'bg-red-50' : 'bg-green-50'}>
+            <tr key={idx} className={entry.phishtank?.in_database && entry.phishtank?.valid ? 'bg-red-50' : 'bg-green-50'}>
               <td className="border px-2 py-1 align-top">{entry.url}</td>
               <td className="border px-2 py-1 align-top">
-                {inPhishTank ? (
+                {entry.phishtank?.in_database && entry.phishtank?.valid ? (
                   <span className="text-red-600 font-semibold">Suspicious</span>
                 ) : (
                   <span className="text-green-600 font-semibold">Safe</span>
@@ -139,72 +188,79 @@ export const UrlChecker: React.FC = () => {
               <td className="border px-2 py-1">
                 <details>
                   <summary className="cursor-pointer font-medium">View full analysis</summary>
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 space-y-4">
+                    {/* PhishTank */}
                     <div>
                       <h4 className="font-semibold">PhishTank</h4>
-                      <p>{inPhishTank ? 'URL found in PhishTank' : 'Not listed in PhishTank'}</p>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold">WHOIS</h4>
-                      <p>Age: {entry.whois.age_days} days</p>
-                      <p>{entry.whois.is_suspicious ? `Domain <30d (created ${entry.whois.creation_date})` : 'Domain age OK'}</p>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold">SSL</h4>
-                      <p>Valid: {entry.ssl.is_valid ? 'Yes' : 'No'}</p>
-                      {!entry.ssl.is_valid && (
-                        <ul className="list-disc ml-4">
-                          {(!entry.ssl.domain_match) && <li>Certificate domain mismatch</li>}
-                          {entry.ssl.is_expired && <li>Certificate expired</li>}
-                          {entry.ssl.is_not_valid_yet && <li>Certificate not yet valid</li>}
-                        </ul>
+                      {entry.phishtank?.in_database && entry.phishtank?.valid ? (
+                        renderReasons(['URL found in PhishTank database'])
+                      ) : (
+                        <p>Not listed in PhishTank</p>
                       )}
                     </div>
 
+                    {/* WHOIS */}
+                    <div>
+                      <h4 className="font-semibold">WHOIS</h4>
+                      <p>Age: {entry.whois.age_days} days</p>
+                      {entry.whois.is_suspicious ? (
+                        renderReasons([
+                          'Domain is less than 30 days old'
+                        ])
+                      ) : (
+                        <p>Domain age OK</p>
+                      )}
+                    </div>
+
+                    {/* SSL */}
+                    <div>
+                      <h4 className="font-semibold">SSL</h4>
+                      <p>Valid: {entry.ssl.is_valid ? 'Yes' : 'No'}</p>
+                      {!entry.ssl.is_valid && renderReasons([
+                        !entry.ssl.domain_match && 'Certificate domain mismatch',
+                        entry.ssl.is_expired && 'Certificate expired',
+                        entry.ssl.is_not_valid_yet && 'Certificate not yet valid',
+                      ].filter(Boolean) as string[])}
+                    </div>
+
+                    {/* Redirects */}
                     <div>
                       <h4 className="font-semibold">Redirects</h4>
                       <p>Chain: {entry.redirects.redirect_chain.join(' → ')}</p>
                       {entry.redirects.reasons.length > 0 ? (
-                        <ul className="list-disc ml-4">
-                          {entry.redirects.reasons.map((r,i) => <li key={i}>{r}</li>)}
-                        </ul>
+                        renderReasons(entry.redirects.reasons)
                       ) : (
                         <p>No suspicious redirects</p>
                       )}
                     </div>
 
+                    {/* Dynamic DNS */}
                     <div>
                       <h4 className="font-semibold">Dynamic DNS</h4>
-                      {entry.dynamic_dns ? (
-                        entry.dynamic_dns.is_dynamic_dns ? (
-                          <p>Uses DDNS: {entry.dynamic_dns.domain}</p>
-                        ) : (
-                          <p>No DDNS detected</p>
-                        )
+                      {entry.dynamic_dns.is_dynamic_dns ? (
+                        renderReasons([
+                          'Domain uses Dynamic-DNS provider'
+                        ])
                       ) : (
-                        <p>Dynamic DNS check not available</p>
+                        <p>No DDNS detected</p>
                       )}
                     </div>
 
+                    {/* Brand Similarity */}
                     <div>
                       <h4 className="font-semibold">Brand Similarity</h4>
                       {entry.brand_similarity.reasons.length > 0 ? (
-                        <ul className="list-disc ml-4">
-                          {entry.brand_similarity.reasons.map((r,i) => <li key={i}>{r}</li>)}
-                        </ul>
+                        renderReasons(entry.brand_similarity.reasons)
                       ) : (
                         <p>No brand-similarity risk detected</p>
                       )}
                     </div>
 
+                    {/* Content Analysis */}
                     <div>
                       <h4 className="font-semibold">Content</h4>
                       {entry.content_analysis.reasons.length > 0 ? (
-                        <ul className="list-disc ml-4">
-                          {entry.content_analysis.reasons.map((r,i) => <li key={i}>{r}</li>)}
-                        </ul>
+                        renderReasons(entry.content_analysis.reasons)
                       ) : (
                         <p>No suspicious forms or fields detected</p>
                       )}
