@@ -8,6 +8,8 @@ export const UrlChecker: React.FC = () => {
   const [inputUrl, setInputUrl] = useState<string>('');
   const [history, setHistory] = useState<PhishingCheckResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [validatorResults, setValidatorResults] = useState<{ [url: string]: string[] }>({});
+  const [modalEntry, setModalEntry] = useState<PhishingCheckResult | null>(null);
   const EXPLANATIONS: Record<string, string> = {
     'URL found in PhishTank database':
       'This URL has been reported and verified by the community as a phishing page.',
@@ -80,9 +82,9 @@ export const UrlChecker: React.FC = () => {
   };
 
   // Export history as CSV
-    // Export history as CSV
-    // Export history as CSV (improved flattening)
-  // Export history as CSV (fixed ordering and escaping)
+      // Export history as CSV
+      // Export history as CSV (improved flattening)
+    // Export history as CSV (fixed ordering and escaping)
   const exportCSV = () => {
     if (history.length === 0) return;
 
@@ -169,7 +171,7 @@ export const UrlChecker: React.FC = () => {
           <li key={i} className="mb-2">
             {reason}
             {explanation && (
-              <p className="text-sm text-gray-600 ml-4">{explanation}</p>
+              <p className="text-sm text-gray-400 ml-4">{explanation}</p>
             )}
           </li>
         );
@@ -177,154 +179,262 @@ export const UrlChecker: React.FC = () => {
     </ul>
   );
 
+  React.useEffect(() => {
+    if (modalEntry) {
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden');
+    }
+    return () => document.body.classList.remove('overflow-hidden');
+  }, [modalEntry]);
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">URL Phishing Checker</h1>
-
-      <div className="flex mb-4 space-x-2">
-        <input
-          type="text"
-          className="border p-2 flex-grow"
-          placeholder="https://example.com"
-          value={inputUrl}
-          onChange={e => setInputUrl(e.target.value)}
-        />
-        <button className="bg-blue-500 text-white px-4 rounded" onClick={checkUrl}>
-          Check URL
-        </button>
-        <button className="bg-green-500 text-white px-4 rounded" onClick={exportJSON}>
-          Export JSON
-        </button>
-        <button className="bg-green-700 text-white px-4 rounded" onClick={exportCSV}>
-          Export CSV
-        </button>
-      </div>
-
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-
-      <table className="min-w-full bg-white">
-        <thead>
-          <tr>
-            <th className="py-2">URL</th>
-            <th className="py-2">Status</th>
-            <th className="py-2">Analysis</th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.map((entry, idx) => (
-            <tr key={idx} className={entry.isPhishing ? 'bg-red-50' : 'bg-green-50'}>
-              <td className="border px-2 py-1 align-top">{entry.url}</td>
-              <td className="border px-2 py-1 align-top">
-                {entry.isPhishing ? (
-                  <span className="text-red-600 font-semibold">Suspicious</span>
-                ) : (
-                  <span className="text-green-600 font-semibold">Safe</span>
-                )}
-              </td>
-              <td className="border px-2 py-1">
-                <details>
-                  <summary className="cursor-pointer font-medium">View full analysis</summary>
-                  {/* ML Model */}
-                  <div>
-                    <h4 className="font-semibold">ML Model</h4>
-                    {entry.ml_model ? (
-                      entry.ml_model.error ? (
-                        <p className="text-red-600">Model error: {entry.ml_model.error}</p>
+    <div className="min-h-screen bg-[#181c25] flex flex-col items-center justify-start py-10">
+      <div className="w-full max-w-6xl mx-auto rounded-2xl bg-[#23283a] p-10 shadow-2xl border border-[#232c43]">
+        <h1 className="text-5xl font-extrabold mb-10 text-blue-200 text-center tracking-tight">URL Phishing Checker</h1>
+        {/* Search bar and buttons at the top */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <input
+            type="text"
+            className="border border-blue-200 bg-[#232c43] text-gray-700 p-4 flex-grow rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+            placeholder="https://example.com"
+            value={inputUrl}
+            onChange={e => setInputUrl(e.target.value)}
+          />
+          <button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow transition" onClick={checkUrl}>
+            Check URL
+          </button>
+          <button className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold px-6 py-3 rounded-lg shadow transition" onClick={exportJSON}>
+            Export JSON
+          </button>
+          <button className="bg-green-400 hover:bg-green-500 text-gray-900 font-semibold px-6 py-3 rounded-lg shadow transition" onClick={exportCSV}>
+            Export CSV
+          </button>
+        </div>
+        {/* Consultations Card */}
+        <div className="bg-[#20243a] border border-[#232c43] rounded-xl p-4 w-full max-h-[400px] flex flex-col mb-8 overflow-y-auto">
+          <div className="font-bold text-blue-200 text-lg mb-4">Consultation History</div>
+          <div className="flex h-[400px] overflow-y-auto min-h-0">
+            
+            <table className="w-full table-fixed border-collapse bg-[#20243a] rounded-xl">
+              <thead>
+                <tr className="bg-[#232c43]">
+                  <th className="py-4 px-5 text-left font-semibold text-blue-200 text-lg">URL</th>
+                  <th className="py-4 px-5 text-left font-semibold text-blue-200 text-lg">Status</th>
+                  <th className="py-4 px-5 text-left font-semibold text-blue-200 text-lg">Analysis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((entry, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-[#20243a]' : 'bg-[#232c43]'}>
+                    <td className="border-b border-[#232c43] px-5 py-3 align-top text-gray-100 text-base">{entry.url}</td>
+                    <td className="border-b border-[#232c43] px-5 py-3 align-top">
+                      {entry.isPhishing ? (
+                        <span className="text-red-400 font-semibold">Suspicious</span>
                       ) : (
+                        <span className="text-blue-400 font-semibold">Safe</span>
+                      )}
+                    </td>
+                    <td className="border-b border-[#232c43] px-5 py-3 align-top">
+                      <button
+                        className="cursor-pointer font-medium text-blue-300 py-2 outline-none underline"
+                        onClick={() => setModalEntry(entry)}
+                      >
+                        View full analysis
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {/* Charts Card below */}
+        {history.length > 0 && (
+          <div className="bg-[#20243a] border border-[#232c43] rounded-xl p-4 w-full flex-shrink-0 flex flex-col justify-center mb-8">
+            <AnalysisCharts history={history} />
+          </div>
+        )}
+        {error && <p className="text-red-400 mt-6 text-center text-lg">{error}</p>}
+      </div>
+      {/* Modal for full analysis */}
+      {modalEntry && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-95"
+          onClick={() => setModalEntry(null)}
+        >
+          {}
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="
+                relative
+                w-full max-w-3xl
+                max-h-[90vh] overflow-y-auto
+                bg-[#232c43] border border-[#334155]
+                rounded-xl p-6
+                shadow-2xl
+              "
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl"
+                onClick={() => setModalEntry(null)}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+
+              <div className="space-y-6">
+                {/* --- ML Model --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">Machine Learning Model</h4>
+                  <p className="text-gray-300 text-sm mb-1">
+                    The machine learning model analyzes the URL and its features using patterns learned from large datasets of phishing and safe websites. It predicts whether the URL is likely to be safe (benign) or suspicious (phishing), and provides a confidence score for its decision.
+                  </p>
+                  {modalEntry.ml_model ? (
+                    modalEntry.ml_model.error ? (
+                      <p className="text-red-600">Model error: {modalEntry.ml_model.error}</p>
+                    ) : (
+                      <div>
                         <p>
-                          Label: {entry.ml_model.label} | Score: {entry.ml_model.score}%
-                          {entry.ml_model.is_suspicious && (
-                            <span className="text-red-500 ml-2 font-semibold">(Phishing)</span>
+                          <span className="font-semibold">Decision:</span>{' '}
+                          {modalEntry.ml_model.label === 'phishing' || modalEntry.ml_model.is_suspicious ? (
+                            <span className="text-red-400 font-semibold"> Phishing</span>
+                          ) : (
+                            <span className="text-blue-400 font-semibold"> Benign (Safe)</span>
                           )}
                         </p>
-                      )
-                    ) : (
-                      <p>ML analysis not available</p>
+                        <p>
+                          <span className="font-semibold">Confidence Score:</span> {modalEntry.ml_model.score}%
+                        </p>
+                        <p className="text-gray-400 text-xs mt-1">
+                          {modalEntry.ml_model.label === 'phishing' || modalEntry.ml_model.is_suspicious
+                            ? 'The model detected patterns commonly associated with phishing attacks. Exercise caution with this URL.'
+                            : 'The model did not detect suspicious patterns. This URL is likely safe, but always verify before entering sensitive information.'}
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <p>ML analysis not available</p>
+                  )}
+                </div>
+
+                {/* --- PhishTank --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">PhishTank</h4>
+                  {modalEntry.phishtank?.in_database && modalEntry.phishtank.valid ? (
+                    renderReasons(['URL found in PhishTank database'])
+                  ) : (
+                    <p className="text-gray-300">Not listed in PhishTank</p>
+                  )}
+                </div>
+
+                {/* --- WHOIS --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">WHOIS</h4>
+                  <p className="text-gray-300">Age: {modalEntry.whois.age_days ?? 'N/A'} days</p>
+                  {modalEntry.whois.is_suspicious ? (
+                    renderReasons(['Domain is less than 30 days old'])
+                  ) : (
+                    <p className="text-gray-300">Domain age OK</p>
+                  )}
+                </div>
+
+                {/* --- SSL --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">SSL</h4>
+                  <p className="text-gray-300">Valid: {modalEntry.ssl.is_valid ? 'Yes' : 'No'}</p>
+                  {!modalEntry.ssl.is_valid &&
+                    renderReasons(
+                      [
+                        !modalEntry.ssl.domain_match && 'Certificate domain mismatch',
+                        modalEntry.ssl.is_expired && 'Certificate expired',
+                        modalEntry.ssl.is_not_valid_yet && 'Certificate not yet valid',
+                      ].filter(Boolean) as string[]
                     )}
-                  </div>
-                  <div className="mt-2 space-y-4">
-                    {/* PhishTank */}
-                    <div>
-                      <h4 className="font-semibold">PhishTank</h4>
-                      {entry.phishtank?.in_database && entry.phishtank?.valid ? (
-                        renderReasons(['URL found in PhishTank database'])
-                      ) : (
-                        <p>Not listed in PhishTank</p>
-                      )}
-                    </div>
+                </div>
 
-                    {/* WHOIS */}
-                    <div>
-                      <h4 className="font-semibold">WHOIS</h4>
-                      <p>Age: {entry.whois.age_days ?? 'N/A'} days</p>
-                      {entry.whois.is_suspicious ? (
-                        renderReasons(['Domain is less than 30 days old'])
-                      ) : (
-                        <p>Domain age OK</p>
-                      )}
-                    </div>
+                {/* --- Redirects --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">Redirects</h4>
+                  <p className="text-gray-300">
+                    Chain: {modalEntry.redirects.redirect_chain.join(' → ')}
+                  </p>
+                  {modalEntry.redirects.reasons.length > 0 ? (
+                    renderReasons(modalEntry.redirects.reasons)
+                  ) : (
+                    <p className="text-gray-300">No suspicious redirects</p>
+                  )}
+                </div>
 
-                    {/* SSL */}
-                    <div>
-                      <h4 className="font-semibold">SSL</h4>
-                      <p>Valid: {entry.ssl.is_valid ? 'Yes' : 'No'}</p>
-                      {!entry.ssl.is_valid && renderReasons([
-                        !entry.ssl.domain_match && 'Certificate domain mismatch',
-                        entry.ssl.is_expired && 'Certificate expired',
-                        entry.ssl.is_not_valid_yet && 'Certificate not yet valid'
-                      ].filter(Boolean) as string[])}
-                    </div>
+                {/* --- Dynamic DNS --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">Dynamic DNS</h4>
+                  {modalEntry.dynamic_dns.is_dynamic_dns ? (
+                    renderReasons(['Domain uses Dynamic-DNS provider'])
+                  ) : (
+                    <p className="text-gray-300">No DDNS detected</p>
+                  )}
+                </div>
 
-                    {/* Redirects */}
-                    <div>
-                      <h4 className="font-semibold">Redirects</h4>
-                      <p>Chain: {entry.redirects.redirect_chain.join(' → ')}</p>
-                      {entry.redirects.reasons.length > 0 ? (
-                        renderReasons(entry.redirects.reasons)
-                      ) : (
-                        <p>No suspicious redirects</p>
-                      )}
-                    </div>
+                {/* --- Brand Similarity --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">Brand Similarity</h4>
+                  {modalEntry.brand_similarity.reasons.length > 0 ? (
+                    renderReasons(modalEntry.brand_similarity.reasons)
+                  ) : (
+                    <p className="text-gray-300">No brand-similarity risk detected</p>
+                  )}
+                </div>
 
-                    {/* Dynamic DNS */}
-                    <div>
-                      <h4 className="font-semibold">Dynamic DNS</h4>
-                      {entry.dynamic_dns.is_dynamic_dns ? (
-                        renderReasons(['Domain uses Dynamic-DNS provider'])
-                      ) : (
-                        <p>No DDNS detected</p>
-                      )}
-                    </div>
+                {/* --- Content Analysis --- */}
+                <div>
+                  <h4 className="font-semibold text-blue-200 mb-1">Content</h4>
+                  {modalEntry.content_analysis.reasons.length > 0 ? (
+                    renderReasons(modalEntry.content_analysis.reasons)
+                  ) : (
+                    <p className="text-gray-300">No suspicious forms or fields detected</p>
+                  )}
+                </div>
 
-                    {/* Brand Similarity */}
-                    <div>
-                      <h4 className="font-semibold">Brand Similarity</h4>
-                      {entry.brand_similarity.reasons.length > 0 ? (
-                        renderReasons(entry.brand_similarity.reasons)
-                      ) : (
-                        <p>No brand-similarity risk detected</p>
-                      )}
-                    </div>
-
-                    {/* Content Analysis */}
-                    <div>
-                      <h4 className="font-semibold">Content</h4>
-                      {entry.content_analysis.reasons.length > 0 ? (
-                        renderReasons(entry.content_analysis.reasons)
-                      ) : (
-                        <p>No suspicious forms or fields detected</p>
-                      )}
-                    </div>
-                  </div>
-                </details>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {history.length > 0 && <AnalysisCharts history={history} />}
+                {/* --- Basic URL Analysis (frontend only) --- */}
+                <ModalValidatorAnalysis
+                  modalEntry={modalEntry}
+                  validatorResults={validatorResults}
+                  setValidatorResults={setValidatorResults}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
+}
 export default UrlChecker;
+function ModalValidatorAnalysis({ modalEntry, validatorResults, setValidatorResults }: { modalEntry: PhishingCheckResult, validatorResults: { [url: string]: string[] }, setValidatorResults: React.Dispatch<React.SetStateAction<{ [url: string]: string[] }>> }) {
+  React.useEffect(() => {
+    if (modalEntry && !validatorResults[modalEntry.url]) {
+      (async () => {
+        const res = await UrlValidator.checkUrl(modalEntry.url);
+        setValidatorResults(prev => ({ ...prev, [modalEntry.url]: res.reasons }));
+      })();
+    }
+  }, [modalEntry, validatorResults, setValidatorResults]);
+
+  if (!validatorResults[modalEntry.url]) {
+    return <div className="mt-6 text-gray-400">Loading basic URL analysis...</div>;
+  }
+  return (
+    <div className={`mt-6 p-3 rounded border-2 shadow-lg ${modalEntry.isPhishing ? 'bg-red-950/80 border-red-500' : 'bg-blue-950/80 border-blue-500'}`}>
+      <h4 className="font-bold text-lg mb-1 text-white">Basic URL Analysis</h4>
+      <ul className="list-disc ml-6 text-gray-200">
+        {validatorResults[modalEntry.url].length > 0
+          ? validatorResults[modalEntry.url].map((reason, idx) => <li key={idx}>{reason}</li>)
+          : <li>URL appears safe</li>
+        }
+      </ul>
+    </div>
+  );
+}

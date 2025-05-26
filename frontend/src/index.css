@@ -3,5 +3,8 @@
 @tailwind utilities;
 
 html, body, #root {
-  @apply bg-gray-100 h-full min-h-screen;
+  background-color: #1a2235;
+  color: #e5e7eb;
+  min-height: 100%;
+  height: 100%;
 }
