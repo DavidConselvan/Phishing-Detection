@@ -12,7 +12,7 @@ class WhoisService:
                 return {
                     "age_days": None,
                     "creation_date": None,
-                    "is_suspicious": False,
+                    "is_suspicious": True,
                     "error": "No creation date found"
                 }
                 

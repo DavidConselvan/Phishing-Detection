@@ -1,76 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { UrlValidator } from '../services/urlValidator';
+import { AnalysisCharts } from './PhishingCharts';
+import type { PhishingCheckResult } from '../types/Phishing';
 
-// Types matching backend response
-export interface WhoisResult {
-  age_days: number;
-  creation_date: string;
-  is_suspicious: boolean;
-  registrar: string;
-  expiration_date: string;
-  organization?: string;
-  country?: string;
-}
-export interface SSLResult {
-  is_valid: boolean;
-  is_expired: boolean;
-  is_not_valid_yet: boolean;
-  issuer?: string;
-  valid_from?: string;
-  valid_until?: string;
-  domain_match: boolean;
-  is_suspicious: boolean;
-}
-export interface RedirectResult {
-  is_suspicious: boolean;
-  reasons: string[];
-  redirect_chain: string[];
-  domains_visited: string[];
-  final_url?: string;
-}
-export interface DynamicDNSResult {
-  is_dynamic_dns: boolean;
-  domain: string;
-}
-export interface BrandSimilarityResult {
-  is_suspicious: boolean;
-  reasons: string[];
-  similar_brands: { label: string; distance: number }[];
-  target_domain: string;
-}
-export interface ContentAnalysisResult {
-  is_suspicious: boolean;
-  reasons: string[];
-  suspicious_text: string[];
-  suspicious_forms: string[];
-}
-export interface PhishTankResult {
-  in_database: boolean;
-  valid?: boolean;
-  phish_id?: number;
-  phish_detail_page?: string;
-  verified?: boolean;
-  verified_at?: string;
-}
-export interface PhishingCheckResult {
-  url: string;
-  isPhishing: boolean;
-  reasons: string[];
-  phishtank?: PhishTankResult;
-  whois: WhoisResult;
-  ssl: SSLResult;
-  redirects: RedirectResult;
-  dynamic_dns: DynamicDNSResult;
-  brand_similarity: BrandSimilarityResult;
-  content_analysis: ContentAnalysisResult;
-}
 
 export const UrlChecker: React.FC = () => {
   const [inputUrl, setInputUrl] = useState<string>('');
   const [history, setHistory] = useState<PhishingCheckResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  // Explanation map for each risk reason
   const EXPLANATIONS: Record<string, string> = {
     'URL found in PhishTank database':
       'This URL has been reported and verified by the community as a phishing page.',
@@ -94,13 +31,19 @@ export const UrlChecker: React.FC = () => {
       'Unexpected redirects to unknown or malicious hosts indicate attempts to evade detection.',
   };
 
-  // Load/persist history
+  // Load history on mount
   useEffect(() => {
     const stored = localStorage.getItem('urlCheckHistory');
-    if (stored) setHistory(JSON.parse(stored));
+    if (stored) {
+      setHistory(JSON.parse(stored));
+    }
   }, []);
+
+  // Save history when it changes (skip initial empty state)
   useEffect(() => {
-    localStorage.setItem('urlCheckHistory', JSON.stringify(history));
+    if (history.length > 0) {
+      localStorage.setItem('urlCheckHistory', JSON.stringify(history));
+    }
   }, [history]);
 
   const checkUrl = async () => {
@@ -116,11 +59,97 @@ export const UrlChecker: React.FC = () => {
         body: JSON.stringify({ url: inputUrl }),
       });
       const result: PhishingCheckResult = await resp.json();
-      setHistory(prev => [{ ...result }, ...prev]);
+      setHistory(prev => [result, ...prev]);
       setInputUrl('');
     } catch (e: any) {
       setError(`Error checking URL: ${e.message}`);
     }
+  };
+
+  // Export history as JSON
+  const exportJSON = () => {
+    const dataStr = JSON.stringify(history, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'url_history.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export history as CSV
+    // Export history as CSV
+    // Export history as CSV (improved flattening)
+  // Export history as CSV (fixed ordering and escaping)
+  const exportCSV = () => {
+    if (history.length === 0) return;
+
+    // Define headers explicitly in the desired order
+    const headers = [
+      'url',
+      'status',
+      'reasons',
+      'phishtank_in_database',
+      'phishtank_verified_at',
+      'whois_age_days',
+      'whois_is_suspicious',
+      'whois_creation_date',
+      'whois_registrar',
+      'whois_organization',
+      'whois_country',
+      'ssl_is_valid',
+      'ssl_domain_match',
+      'ssl_is_expired',
+      'ssl_not_valid_yet',
+      'redirect_chain',
+      'redirect_reasons',
+      'dynamic_dns',
+      'brand_similarity_reasons',
+      'content_reasons'
+    ];
+
+    // Build rows array
+    const rows = history.map(e => [
+      e.url,
+      e.isPhishing ? 'Suspicious' : 'Safe',
+      e.reasons.join('; '),
+      e.phishtank?.in_database?.toString() ?? 'false',
+      e.phishtank?.verified_at ?? '',
+      e.whois.age_days != null ? e.whois.age_days.toString() : '',
+      e.whois.is_suspicious.toString(),
+      e.whois.creation_date ?? '',
+      e.whois.registrar ?? '',
+      e.whois.organization ?? '',
+      e.whois.country ?? '',
+      e.ssl.is_valid.toString(),
+      e.ssl.domain_match.toString(),
+      e.ssl.is_expired.toString(),
+      e.ssl.is_not_valid_yet.toString(),
+      e.redirects.redirect_chain.join(' > '),
+      e.redirects.reasons.join('; '),
+      e.dynamic_dns.is_dynamic_dns ? e.dynamic_dns.domain : 'false',
+      e.brand_similarity.reasons.join('; '),
+      e.content_analysis.reasons.join('; ')
+    ]);
+
+    // Helper to escape any quotes in field
+    const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
+
+    // Compose CSV content
+    const csvContent = [
+      headers.map(escape).join(','),
+      ...rows.map(row => row.map(escape).join(','))
+    ].join('\r\n');
+
+    // Trigger file download
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'url_history.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const renderReasons = (reasons: string[]) => (
@@ -151,16 +180,22 @@ export const UrlChecker: React.FC = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">URL Phishing Checker</h1>
 
-      <div className="flex mb-4">
+      <div className="flex mb-4 space-x-2">
         <input
           type="text"
-          className="border p-2 flex-grow mr-2"
+          className="border p-2 flex-grow"
           placeholder="https://example.com"
           value={inputUrl}
           onChange={e => setInputUrl(e.target.value)}
         />
         <button className="bg-blue-500 text-white px-4 rounded" onClick={checkUrl}>
           Check URL
+        </button>
+        <button className="bg-green-500 text-white px-4 rounded" onClick={exportJSON}>
+          Export JSON
+        </button>
+        <button className="bg-green-700 text-white px-4 rounded" onClick={exportCSV}>
+          Export CSV
         </button>
       </div>
 
@@ -176,10 +211,10 @@ export const UrlChecker: React.FC = () => {
         </thead>
         <tbody>
           {history.map((entry, idx) => (
-            <tr key={idx} className={entry.phishtank?.in_database && entry.phishtank?.valid ? 'bg-red-50' : 'bg-green-50'}>
+            <tr key={idx} className={entry.isPhishing ? 'bg-red-50' : 'bg-green-50'}>
               <td className="border px-2 py-1 align-top">{entry.url}</td>
               <td className="border px-2 py-1 align-top">
-                {entry.phishtank?.in_database && entry.phishtank?.valid ? (
+                {entry.isPhishing ? (
                   <span className="text-red-600 font-semibold">Suspicious</span>
                 ) : (
                   <span className="text-green-600 font-semibold">Safe</span>
@@ -202,11 +237,9 @@ export const UrlChecker: React.FC = () => {
                     {/* WHOIS */}
                     <div>
                       <h4 className="font-semibold">WHOIS</h4>
-                      <p>Age: {entry.whois.age_days} days</p>
+                      <p>Age: {entry.whois.age_days ?? 'N/A'} days</p>
                       {entry.whois.is_suspicious ? (
-                        renderReasons([
-                          'Domain is less than 30 days old'
-                        ])
+                        renderReasons(['Domain is less than 30 days old'])
                       ) : (
                         <p>Domain age OK</p>
                       )}
@@ -219,7 +252,7 @@ export const UrlChecker: React.FC = () => {
                       {!entry.ssl.is_valid && renderReasons([
                         !entry.ssl.domain_match && 'Certificate domain mismatch',
                         entry.ssl.is_expired && 'Certificate expired',
-                        entry.ssl.is_not_valid_yet && 'Certificate not yet valid',
+                        entry.ssl.is_not_valid_yet && 'Certificate not yet valid'
                       ].filter(Boolean) as string[])}
                     </div>
 
@@ -238,9 +271,7 @@ export const UrlChecker: React.FC = () => {
                     <div>
                       <h4 className="font-semibold">Dynamic DNS</h4>
                       {entry.dynamic_dns.is_dynamic_dns ? (
-                        renderReasons([
-                          'Domain uses Dynamic-DNS provider'
-                        ])
+                        renderReasons(['Domain uses Dynamic-DNS provider'])
                       ) : (
                         <p>No DDNS detected</p>
                       )}
@@ -272,6 +303,7 @@ export const UrlChecker: React.FC = () => {
           ))}
         </tbody>
       </table>
+      {history.length > 0 && <AnalysisCharts history={history} />}
     </div>
   );
 };
