@@ -43,6 +43,7 @@ class SSLService:
                         "is_suspicious": is_expired or is_not_valid_yet or not domain_match
                     }
                     print(f"SSL data for {domain}:", data)
+                    print("--------------------------------")
                     return data
                     
 

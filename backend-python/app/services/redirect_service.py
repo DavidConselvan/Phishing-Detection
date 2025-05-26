@@ -118,6 +118,7 @@ class RedirectService:
                 "final_url": final
             }
             print("redirects data", data)
+            print("--------------------------------")
             return data
 
         except Exception as e:

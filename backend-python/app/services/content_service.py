@@ -131,9 +131,11 @@ class ContentService:
             data = {
                 "is_suspicious": bool(form_reasons),
                 "reasons": form_reasons,
-                "suspicious_forms": form_reasons
+                "suspicious_forms": form_reasons,
+                "suspicious_text": []
             }
             print("content data", data)
+            print("--------------------------------")
             return data
 
         except Exception as e:
@@ -141,5 +143,6 @@ class ContentService:
             return {
                 "is_suspicious": True,
                 "reasons": [f"Error analyzing content: {str(e)}"],
-                "suspicious_forms": []
+                "suspicious_forms": [],
+                "suspicious_text": []
             } 

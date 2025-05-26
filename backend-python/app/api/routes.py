@@ -7,6 +7,7 @@ from app.services.redirect_service import RedirectService
 from app.services.brand_service import BrandService
 from app.services.content_service import ContentService
 from urllib.parse import urlparse
+from app.services.dynamic_dns_service import DynamicDnsService
 
 router = APIRouter()
 phishtank_service = PhishTankService()
@@ -15,6 +16,7 @@ ssl_service = SSLService()
 redirect_service = RedirectService()
 brand_service = BrandService()
 content_service = ContentService()
+dynamic_dns_service = DynamicDnsService()
 
 @router.get("/test")
 async def test():
@@ -31,6 +33,7 @@ async def check_phishing(request: URLRequest):
     redirect_result = redirect_service.check_redirects(url)
     brand_result = brand_service.check_similarity(url)
     content_result = content_service.analyze_content(url)
+    ddns_result = dynamic_dns_service.check_domain(domain)
 
     isPhishing = (
         phishtank_result.get("isPhishing", False) or 
@@ -38,7 +41,8 @@ async def check_phishing(request: URLRequest):
         ssl_result.get("is_suspicious", False) or
         redirect_result.get("is_suspicious", False) or
         brand_result.get("is_suspicious", False) or
-        content_result.get("is_suspicious", False)
+        content_result.get("is_suspicious", False) or
+        ddns_result.get("is_dynamic_dns", False)
     )
     reasons = []
 
@@ -65,14 +69,20 @@ async def check_phishing(request: URLRequest):
     if content_result.get("is_suspicious"):
         reasons.extend(content_result.get("reasons", []))
 
-    return PhishingCheckResult(
-        url=url,
-        isPhishing=isPhishing,
-        reasons=reasons,
-        phishtank=phishtank_result.get("phishtank"),
-        whois=whois_result,
-        ssl=ssl_result,
-        redirects=redirect_result,
-        brand_similarity=brand_result,
-        content_analysis=content_result
-    ) 
+    if ddns_result["is_dynamic_dns"]:
+         reasons.append(f"Domain uses Dynamic-DNS provider ({ddns_result['domain']})")
+
+    result = PhishingCheckResult(
+         url=url,
+         isPhishing=isPhishing,
+         reasons=reasons,
+         phishtank=phishtank_result.get("phishtank"),
+         whois=whois_result,
+         ssl=ssl_result,
+         redirects=redirect_result,
+         dynamic_dns=ddns_result,  
+         brand_similarity=brand_result,
+         content_analysis=content_result
+     )
+    # print("Result: ", result)
+    return result

@@ -31,6 +31,7 @@ class WhoisService:
                 "country": w.country
             }
             print(f"WHOIS data for {domain}:", data)
+            print("--------------------------------")
             return data
             
         except Exception as e:

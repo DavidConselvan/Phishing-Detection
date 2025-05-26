@@ -19,6 +19,10 @@ class WhoisResult(BaseModel):
     country: Optional[str]
     error: Optional[str]
 
+class DynamicDNSResult(BaseModel):
+    is_dynamic_dns: bool
+    domain: str
+
 class SSLResult(BaseModel):
     is_valid: bool
     is_expired: bool
@@ -45,10 +49,11 @@ class ContentAnalysisResult(BaseModel):
 class PhishingCheckResult(BaseModel):
     url: str
     isPhishing: bool
-    reasons: List[str]
-    phishtank: Optional[Dict[str, Any]] = None
-    whois: Optional[Dict[str, Any]] = None
-    ssl: Optional[Dict[str, Any]] = None
-    redirects: Optional[Dict[str, Any]] = None
-    brand_similarity: Optional[Dict[str, Any]] = None
-    content_analysis: Optional[Dict[str, Any]] = None 
+    reasons: list[str]
+    phishtank: Optional[dict] = None
+    whois: dict
+    ssl: dict
+    redirects: dict
+    dynamic_dns: Optional[DynamicDNSResult] = None
+    brand_similarity: dict
+    content_analysis: dict

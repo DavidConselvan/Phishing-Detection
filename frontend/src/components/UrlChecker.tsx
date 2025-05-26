@@ -1,150 +1,220 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UrlValidator } from '../services/urlValidator';
-import type { UrlCheckResult } from '../services/urlValidator';
 
-export function UrlChecker() {
-  const [url, setUrl] = useState('');
-  const [results, setResults] = useState<UrlCheckResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [validFormat, setValidFormat] = useState(true);
+// Types matching backend response
+export interface WhoisResult {
+  age_days: number;
+  creation_date: string;
+  is_suspicious: boolean;
+  registrar: string;
+  expiration_date: string;
+  organization?: string;
+  country?: string;
+}
+export interface SSLResult {
+  is_valid: boolean;
+  is_expired: boolean;
+  is_not_valid_yet: boolean;
+  issuer?: string;
+  valid_from?: string;
+  valid_until?: string;
+  domain_match: boolean;
+  is_suspicious: boolean;
+}
+export interface RedirectResult {
+  is_suspicious: boolean;
+  reasons: string[];
+  redirect_chain: string[];
+  domains_visited: string[];
+  final_url?: string;
+}
+export interface DynamicDNSResult {
+  is_dynamic_dns: boolean;
+  domain: string;
+}
+export interface BrandSimilarityResult {
+  is_suspicious: boolean;
+  reasons: string[];
+  similar_brands: { label: string; distance: number }[];
+  target_domain: string;
+}
+export interface ContentAnalysisResult {
+  is_suspicious: boolean;
+  reasons: string[];
+  suspicious_text: string[];
+  suspicious_forms: string[];
+}
+export interface PhishingCheckResult {
+  url: string;
+  isPhishing: boolean;
+  reasons: string[];
+  phishtank?: any;
+  whois: WhoisResult;
+  ssl: SSLResult;
+  redirects: RedirectResult;
+  dynamic_dns: DynamicDNSResult;
+  brand_similarity: BrandSimilarityResult;
+  content_analysis: ContentAnalysisResult;
+}
 
-  const checkUrl = async (url: string) => {
-    setIsLoading(true);
-    try {
-      // 1. Run local checks
-      const localResult = await UrlValidator.checkUrl(url);
-      let reasons = [...localResult.reasons];
-      let isSafe = localResult.isSafe;
+export const UrlChecker: React.FC = () => {
+  const [inputUrl, setInputUrl] = useState<string>('');
+  const [history, setHistory] = useState<PhishingCheckResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-      // 2. Call backend for PhishTank check
-      let phishtankError = false;
-      try {
-        const response = await fetch('http://localhost:3001/api/check-phishing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        });
-        const data = await response.json();
+  useEffect(() => {
+    const stored = localStorage.getItem('urlCheckHistory');
+    if (stored) setHistory(JSON.parse(stored));
+  }, []);
 
-        if (data.isPhishing) {
-          reasons.push('URL found in PhishTank database');
-          isSafe = false;
-        } else {
-          reasons.push('URL not found in PhishTank database');
-        }
-      } catch (error) {
-        reasons.push('Could not check PhishTank (service unavailable)');
-        phishtankError = true;
-      }
+  useEffect(() => {
+    localStorage.setItem('urlCheckHistory', JSON.stringify(history));
+  }, [history]);
 
-      setResults(prev => [
-        {
-          url,
-          isSafe,
-          reasons,
-          phishtankError,
-        },
-        ...prev,
-      ]);
-    } catch (error) {
-      setResults(prev => [
-        {
-          url,
-          isSafe: false,
-          reasons: ['Error checking PhishTank'],
-        },
-        ...prev,
-      ]);
-    } finally {
-      setIsLoading(false);
+  const checkUrl = async () => {
+    setError(null);
+    if (!UrlValidator.isValidUrl(inputUrl)) {
+      setError('Please enter a valid URL (including http:// or https://)');
+      return;
     }
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (url) {
-      if (!UrlValidator.isValidUrl(url)) {
-        setValidFormat(false);
-        return;
-      } else {
-        setValidFormat(true);
-      }
-      checkUrl(url);
-      setUrl('');
+    try {
+      const resp = await fetch('http://localhost:3001/api/check-phishing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: inputUrl })
+      });
+      const result: PhishingCheckResult = await resp.json();
+      setHistory(prev => [{ ...result }, ...prev]);
+      setInputUrl('');
+    } catch (e: any) {
+      setError(`Error checking URL: ${e.message}`);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-8">URL Phishing Checker</h1>
-      
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="flex flex-row gap-2 items-end h-full">
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setValidFormat(UrlValidator.isValidUrl(e.target.value));
-            }}
-            placeholder="https://example.com"
-            className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full h-10"
-            required
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !validFormat}
-            className="h-10 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:text-gray-300 text-white rounded-lg flex items-center justify-center text-sm font-medium"
-          >
-            {isLoading ? 'Checking...' : 'Check URL'}
-          </button>
-        </div>
-        <p className={`text-sm px-2 mt-1 ${validFormat ? 'text-green-600' : 'text-red-500'}`}>
-          {validFormat ? '' : 'Invalid URL format'}
-        </p>
-      </form>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">URL Phishing Checker</h1>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {results.map((result, index) => (
-              <tr key={index}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.url}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    result.isSafe ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {result.isSafe ? 'Safe' : 'Suspicious'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  <ul className="list-disc list-inside">
-                    {result.reasons.map((reason, i) => (
-                      <li
-                        key={i}
-                        className={
-                          reason.includes('Could not check PhishTank')
-                            ? 'text-yellow-600 font-semibold'
-                            : ''
-                        }
-                      >
-                        {reason}
-                      </li>
-                    ))}
-                  </ul>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex mb-4">
+        <input
+          type="text"
+          className="border p-2 flex-grow mr-2"
+          placeholder="https://example.com"
+          value={inputUrl}
+          onChange={e => setInputUrl(e.target.value)}
+        />
+        <button
+          className="bg-blue-500 text-white px-4 rounded"
+          onClick={checkUrl}
+        >
+          Check URL
+        </button>
       </div>
+
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
+      <table className="min-w-full bg-white">
+        <thead>
+          <tr>
+            <th className="py-2">URL</th>
+            <th className="py-2">Status</th>
+            <th className="py-2">Analysis</th>
+          </tr>
+        </thead>
+        <tbody>
+          {history.map((entry, idx) => (
+            <tr key={idx} className={entry.isPhishing ? 'bg-red-50' : 'bg-green-50'}>
+              <td className="border px-2 py-1 align-top">{entry.url}</td>
+              <td className="border px-2 py-1 align-top">
+                {entry.isPhishing ? (
+                  <span className="text-red-600 font-semibold">Suspicious</span>
+                ) : (
+                  <span className="text-green-600 font-semibold">Safe</span>
+                )}
+              </td>
+              <td className="border px-2 py-1">
+                <details>
+                  <summary className="cursor-pointer font-medium">View full analysis</summary>
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <h4 className="font-semibold">PhishTank</h4>
+                      <p>{entry.phishtank?.isPhishing ? 'URL found in PhishTank' : 'Not listed in PhishTank'}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold">WHOIS</h4>
+                      <p>Age: {entry.whois.age_days} days</p>
+                      <p>{entry.whois.is_suspicious ? `Domain <30d (created ${entry.whois.creation_date})` : 'Domain age OK'}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold">SSL</h4>
+                      <p>Valid: {entry.ssl.is_valid ? 'Yes' : 'No'}</p>
+                      {!entry.ssl.is_valid && (
+                        <ul className="list-disc ml-4">
+                          {(!entry.ssl.domain_match) && <li>Certificate domain mismatch</li>}
+                          {entry.ssl.is_expired && <li>Certificate expired</li>}
+                          {entry.ssl.is_not_valid_yet && <li>Certificate not yet valid</li>}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold">Redirects</h4>
+                      <p>Chain: {entry.redirects.redirect_chain.join(' → ')}</p>
+                      {entry.redirects.reasons.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {entry.redirects.reasons.map((r,i) => <li key={i}>{r}</li>)}
+                        </ul>
+                      ) : (
+                        <p>No suspicious redirects</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold">Dynamic DNS</h4>
+                      {entry.dynamic_dns ? (
+                        entry.dynamic_dns.is_dynamic_dns ? (
+                          <p>Uses DDNS: {entry.dynamic_dns.domain}</p>
+                        ) : (
+                          <p>No DDNS detected</p>
+                        )
+                      ) : (
+                        <p>Dynamic DNS check not available</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold">Brand Similarity</h4>
+                      {entry.brand_similarity.reasons.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {entry.brand_similarity.reasons.map((r,i) => <li key={i}>{r}</li>)}
+                        </ul>
+                      ) : (
+                        <p>No brand-similarity risk detected</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold">Content</h4>
+                      {entry.content_analysis.reasons.length > 0 ? (
+                        <ul className="list-disc ml-4">
+                          {entry.content_analysis.reasons.map((r,i) => <li key={i}>{r}</li>)}
+                        </ul>
+                      ) : (
+                        <p>No suspicious forms or fields detected</p>
+                      )}
+                    </div>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
-} 
+};
+
+export default UrlChecker;
