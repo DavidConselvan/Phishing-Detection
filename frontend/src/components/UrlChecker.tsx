@@ -224,6 +224,24 @@ export const UrlChecker: React.FC = () => {
               <td className="border px-2 py-1">
                 <details>
                   <summary className="cursor-pointer font-medium">View full analysis</summary>
+                  {/* ML Model */}
+                  <div>
+                    <h4 className="font-semibold">ML Model</h4>
+                    {entry.ml_model ? (
+                      entry.ml_model.error ? (
+                        <p className="text-red-600">Model error: {entry.ml_model.error}</p>
+                      ) : (
+                        <p>
+                          Label: {entry.ml_model.label} | Score: {entry.ml_model.score}%
+                          {entry.ml_model.is_suspicious && (
+                            <span className="text-red-500 ml-2 font-semibold">(Phishing)</span>
+                          )}
+                        </p>
+                      )
+                    ) : (
+                      <p>ML analysis not available</p>
+                    )}
+                  </div>
                   <div className="mt-2 space-y-4">
                     {/* PhishTank */}
                     <div>
@@ -297,23 +315,6 @@ export const UrlChecker: React.FC = () => {
                         <p>No suspicious forms or fields detected</p>
                       )}
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">ML Model</h4>
-                    {entry.ml_model ? (
-                      entry.ml_model.error ? (
-                        <p className="text-red-600">Model error: {entry.ml_model.error}</p>
-                      ) : (
-                        <p>
-                          Label: {entry.ml_model.label} | Score: {entry.ml_model.score}%
-                          {entry.ml_model.is_suspicious && (
-                            <span className="text-red-500 ml-2 font-semibold">(Phishing)</span>
-                          )}
-                        </p>
-                      )
-                    ) : (
-                      <p>ML analysis not available</p>
-                    )}
                   </div>
                 </details>
               </td>
